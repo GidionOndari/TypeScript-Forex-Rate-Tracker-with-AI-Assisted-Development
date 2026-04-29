@@ -37,7 +37,7 @@ export function renderLoadingSkeleton(rowCount = 7): void {
   container.appendChild(skeletonWrapper)
 }
 
-export function renderError(message: string): void {
+export function renderError(message: string, onRetry: () => void): void {
   const container = document.getElementById('rates-container')
 
   if (!container) {
@@ -61,6 +61,7 @@ export function renderError(message: string): void {
   const retryButton = document.createElement('button')
   retryButton.type = 'button'
   retryButton.textContent = 'Retry'
+  retryButton.addEventListener('click', onRetry)
 
   wrapper.appendChild(errorText)
   wrapper.appendChild(retryButton)

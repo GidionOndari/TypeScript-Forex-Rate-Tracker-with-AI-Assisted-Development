@@ -4,6 +4,7 @@ export interface AppState {
   previousRates: Record<string, number> | null
   loading: boolean
   error: string | null
+  lastSuccessfulRates: Record<string, number> | null
 }
 
 export const appState: AppState = {
@@ -12,6 +13,7 @@ export const appState: AppState = {
   previousRates: null,
   loading: false,
   error: null,
+  lastSuccessfulRates: null,
 }
 
 export function setBaseCurrency(currency: string): void {
@@ -21,6 +23,7 @@ export function setBaseCurrency(currency: string): void {
 export function updateRatesWithSnapshot(newRates: Record<string, number>): void {
   appState.previousRates = appState.currentRates ? { ...appState.currentRates } : null
   appState.currentRates = { ...newRates }
+  appState.lastSuccessfulRates = { ...newRates }
 }
 
 export function setRates(rates: Record<string, number>): void {
