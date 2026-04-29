@@ -40,15 +40,41 @@ function updateRefreshIndicator(text: string): void {
   }
 }
 
-function renderFromState(container: HTMLElement): void {
+function renderFromState(container: HTMLElement, onRetry: () => void): void {
   if (appState.loading) {
     renderLoadingSkeleton()
     updateRefreshIndicator('Refreshing rates...')
     return
   }
 
-  if (appState.error) {
-    renderError('Unable to fetch exchange rates. Please try again.')
+  if (appState.error !== null) {
+    const errorMessage =
+      typeof appState.error === 'string' && appState.error.trim().length > 0
+        ? appState.error
+        : 'Unable to fetch exchange rates. Please try again.'
+
+    if (appState.lastSuccessfulRates) {
+      container.innerHTML = ''
+      renderRates(appState.lastSuccessfulRates, appState.previousRates)
+
+      const staleNotice = document.createElement('p')
+      staleNotice.textContent = `Showing stale data. Latest update failed: ${errorMessage}`
+      staleNotice.style.marginTop = '12px'
+      staleNotice.style.color = '#92400e'
+      staleNotice.style.fontSize = '0.9rem'
+      container.appendChild(staleNotice)
+
+      const retryButton = document.createElement('button')
+      retryButton.type = 'button'
+      retryButton.textContent = 'Retry'
+      retryButton.addEventListener('click', onRetry)
+      container.appendChild(retryButton)
+
+      updateRefreshIndicator('Showing stale data')
+      return
+    }
+
+    renderError(errorMessage, onRetry)
     updateRefreshIndicator('Last update failed')
     return
   }
@@ -87,7 +113,9 @@ export async function renderApp(): Promise<void> {
     updateBaseCurrencyDisplay()
     setError(null)
     setLoading(true)
-    renderFromState(ratesContainer)
+    renderFromState(ratesContainer, () => {
+      void retryLoadRates()
+    })
 
     requestToken += 1
     const currentToken = requestToken
@@ -103,7 +131,9 @@ export async function renderApp(): Promise<void> {
       setBaseCurrency(response.base)
       updateBaseCurrencyDisplay()
       setLoading(false)
-      renderFromState(ratesContainer)
+      renderFromState(ratesContainer, () => {
+      void retryLoadRates()
+    })
     } catch (error) {
       if (currentToken !== requestToken) {
         return
@@ -112,8 +142,18 @@ export async function renderApp(): Promise<void> {
       const message = error instanceof Error ? error.message : 'Failed to load exchange rates.'
       setError(message)
       setLoading(false)
-      renderFromState(ratesContainer)
+      renderFromState(ratesContainer, () => {
+      void retryLoadRates()
+    })
     }
+  }
+
+  let retryAttemptCount = 0
+
+  const retryLoadRates = async (): Promise<void> => {
+    retryAttemptCount += 1
+    console.log(`[retry] Attempt #${retryAttemptCount} using base currency ${appState.baseCurrency}`)
+    await loadRates(appState.baseCurrency)
   }
 
   const selector = createCurrencySelector((selectedCurrency) => {
