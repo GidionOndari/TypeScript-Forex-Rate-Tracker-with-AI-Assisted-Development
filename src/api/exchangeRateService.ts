@@ -1,7 +1,16 @@
+import { appConfig } from '../config'
 import type { ExchangeRatesResponse } from '../types'
 import { request } from '../utils'
 
-const EXCHANGE_RATE_HOST_BASE_URL = 'https://api.exchangerate.host'
+interface ApiErrorPayload {
+  success?: false
+  error?: {
+    code?: number | string
+    type?: string
+    info?: string
+  }
+  message?: string
+}
 
 /**
  * Fetches the latest exchange rates for a provided base currency.
@@ -13,14 +22,53 @@ export async function getLatestRates(baseCurrency: string): Promise<ExchangeRate
     throw new Error('Base currency is required.')
   }
 
-  const url = `${EXCHANGE_RATE_HOST_BASE_URL}/latest?base=${encodeURIComponent(normalizedBase)}`
-  const data: unknown = await request(url)
+  const params = new URLSearchParams({ base: normalizedBase })
 
-  if (!isExchangeRatesResponse(data)) {
-    throw new Error('Invalid ExchangeRate.host response shape.')
+  if (appConfig.apiKey) {
+    params.set('access_key', appConfig.apiKey)
   }
 
-  return data
+  const url = `${appConfig.apiBaseUrl}/latest?${params.toString()}`
+
+  let rawResponse: unknown
+
+  try {
+    rawResponse = await request(url)
+  } catch (error) {
+    throw new Error(`Failed to fetch exchange rates: ${toErrorMessage(error)}`)
+  }
+
+  console.debug('ExchangeRate API raw response:', rawResponse)
+
+  const parsedResponse = parseExchangeRatePayload(rawResponse)
+
+  if (parsedResponse.kind === 'error') {
+    throw new Error(parsedResponse.message)
+  }
+
+  return parsedResponse.data
+}
+
+type ParseResult =
+  | { kind: 'success'; data: ExchangeRatesResponse }
+  | { kind: 'error'; message: string }
+
+function parseExchangeRatePayload(payload: unknown): ParseResult {
+  if (isExchangeRatesResponse(payload)) {
+    return { kind: 'success', data: payload }
+  }
+
+  if (isApiErrorPayload(payload)) {
+    return {
+      kind: 'error',
+      message: formatApiError(payload),
+    }
+  }
+
+  return {
+    kind: 'error',
+    message: 'Invalid API response schema: expected { base, date, rates }.',
+  }
 }
 
 function isExchangeRatesResponse(value: unknown): value is ExchangeRatesResponse {
@@ -37,4 +85,33 @@ function isExchangeRatesResponse(value: unknown): value is ExchangeRatesResponse
     candidate.rates !== null &&
     Object.values(candidate.rates).every((rate) => typeof rate === 'number')
   )
+}
+
+function isApiErrorPayload(value: unknown): value is ApiErrorPayload {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+
+  const candidate = value as ApiErrorPayload
+
+  return candidate.success === false || typeof candidate.message === 'string' || !!candidate.error
+}
+
+function formatApiError(payload: ApiErrorPayload): string {
+  const code = payload.error?.code
+  const type = payload.error?.type
+  const info = payload.error?.info
+
+  const parts = [
+    'Exchange rate API returned an error.',
+    code !== undefined ? `code=${String(code)}` : undefined,
+    type ? `type=${type}` : undefined,
+    info || payload.message,
+  ].filter(Boolean)
+
+  return parts.join(' ')
+}
+
+function toErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Unknown request failure.'
 }
