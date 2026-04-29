@@ -1,4 +1,4 @@
-const DEFAULT_API_BASE_URL = 'https://api.exchangerate.host'
+const DEFAULT_API_BASE_URL = 'https://api.exchangerate.host/v1'
 
 interface AppConfig {
   apiBaseUrl: string
