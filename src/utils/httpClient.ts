@@ -7,7 +7,7 @@ const MAX_RETRY_ATTEMPTS = 2
 const INITIAL_BACKOFF_MS = 500
 
 export class RequestTimeoutError extends Error {
-  constructor(message = 'Request timed out while fetching exchange rates.') {
+  constructor(message = 'Request timed out') {
     super(message)
     this.name = 'RequestTimeoutError'
   }
@@ -82,16 +82,32 @@ export async function request(url: string, timeoutMs = DEFAULT_REQUEST_TIMEOUT_M
 }
 
 async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
+  console.debug('[fetchWithTimeout] request URL', { url, timeoutMs })
   const controller = new AbortController()
   const timeoutId = setTimeout(() => {
     controller.abort()
   }, timeoutMs)
 
   try {
-    return await fetch(url, { signal: controller.signal })
+    const response = await fetch(url, { signal: controller.signal })
+    console.debug('[fetchWithTimeout] response status', {
+      url,
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok,
+    })
+    return response
   } catch (error) {
-    if (error instanceof DOMException && error.name === 'AbortError') {
-      throw new RequestTimeoutError(`Request timed out after ${timeoutMs}ms while fetching exchange rates.`)
+    console.error('[fetchWithTimeout] request error', {
+      url,
+      error,
+      stack: error instanceof Error ? error.stack : undefined,
+    })
+    if (
+      (error instanceof DOMException && error.name === 'AbortError') ||
+      (error instanceof Error && error.name === 'AbortError')
+    ) {
+      throw new RequestTimeoutError()
     }
 
     throw error
@@ -118,7 +134,7 @@ function normalizeRequestError(error: unknown): Error {
   }
 
   if (error instanceof HttpStatusError) {
-    return new Error(error.message)
+    return error
   }
 
   if (error instanceof TypeError) {

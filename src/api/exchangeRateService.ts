@@ -1,5 +1,5 @@
 import { appConfig } from '../config'
-import type { ExchangeRatesResponse } from '../types'
+import { isExchangeRatesResponse, toExchangeRateNumber, type ExchangeRatesResponse } from '../types'
 import { RequestTimeoutError, request } from '../utils'
 
 interface ApiErrorPayload {
@@ -30,11 +30,11 @@ export async function getLatestRates(baseCurrency: string): Promise<ExchangeRate
 
   const params = new URLSearchParams({ base: normalizedBase })
 
-  if (appConfig.apiKey && supportsAccessKeyAuth(appConfig.apiBaseUrl)) {
+  if (appConfig.apiKey && shouldAppendAccessKey(appConfig.apiBaseUrl)) {
     params.set('access_key', appConfig.apiKey)
   }
 
-  const normalizedApiBaseUrl = appConfig.apiBaseUrl.replace(/\/+$/, '').replace(/\/v1$/, '')
+  const normalizedApiBaseUrl = normalizeApiBaseUrl(appConfig.apiBaseUrl)
   const url = `${normalizedApiBaseUrl}/latest?${params.toString()}`
   console.debug('[exchangeRateService] request URL', { url, baseCurrency: normalizedBase })
 
@@ -52,7 +52,11 @@ export async function getLatestRates(baseCurrency: string): Promise<ExchangeRate
       throw new Error(`Request timeout: ${error.message}`)
     }
 
-    throw new Error(`Failed to fetch exchange rates: ${toErrorMessage(error)}`)
+    if (error instanceof Error) {
+      throw error
+    }
+
+    throw new Error(toErrorMessage(error))
   }
 
   console.debug('ExchangeRate API raw response:', rawResponse)
@@ -205,22 +209,7 @@ function normalizeCurrencyCode(rawCode: string, baseCurrency: string): string | 
 }
 
 function toFiniteRate(value: unknown): number | null {
-  if (typeof value === 'number') {
-    return Number.isFinite(value) ? value : null
-  }
-
-  if (typeof value !== 'string') {
-    return null
-  }
-
-  const trimmedValue = value.trim()
-
-  if (trimmedValue.length === 0) {
-    return null
-  }
-
-  const parsedValue = Number(trimmedValue)
-  return Number.isFinite(parsedValue) ? parsedValue : null
+  return toExchangeRateNumber(value)
 }
 
 function normalizeDate(rawDate: unknown, rawTimestamp: unknown): string {
@@ -256,33 +245,26 @@ function toTimestamp(value: unknown): number | null {
   return null
 }
 
-function supportsAccessKeyAuth(apiBaseUrl: string): boolean {
+function shouldAppendAccessKey(apiBaseUrl: string): boolean {
+  if (isExchangeRateHost(apiBaseUrl)) {
+    return false
+  }
+
   try {
     const { hostname } = new URL(apiBaseUrl)
-    const normalizedHost = hostname.toLowerCase()
-
-    return !normalizedHost.endsWith('exchangerate.host')
+    return !isExchangeRateHost(hostname)
   } catch {
     return true
   }
 }
 
-function isExchangeRatesResponse(value: unknown): value is ExchangeRatesResponse {
-  if (!value || typeof value !== 'object') {
-    return false
-  }
+function isExchangeRateHost(value: string): boolean {
+  return value.toLowerCase().includes('exchangerate.host')
+}
 
-  const candidate = value as Partial<ExchangeRatesResponse>
-
-  return (
-    typeof candidate.base === 'string' &&
-    candidate.base.trim().length > 0 &&
-    typeof candidate.date === 'string' &&
-    candidate.date.trim().length > 0 &&
-    typeof candidate.rates === 'object' &&
-    candidate.rates !== null &&
-    Object.values(candidate.rates).every((rate) => typeof rate === 'number' && Number.isFinite(rate))
-  )
+function normalizeApiBaseUrl(apiBaseUrl: string): string {
+  const withoutTrailingSlash = apiBaseUrl.replace(/\/+$/, '')
+  return withoutTrailingSlash.replace(/\/v1$/i, '')
 }
 
 function isApiErrorPayload(value: unknown): value is ApiErrorPayload {
