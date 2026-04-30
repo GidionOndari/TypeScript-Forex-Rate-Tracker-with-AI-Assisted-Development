@@ -28,18 +28,39 @@ export async function request(url: string, timeoutMs = DEFAULT_REQUEST_TIMEOUT_M
 
   while (true) {
     try {
+      console.debug('[request] sending request', { url, timeoutMs, retryAttempt })
       const response = await fetchWithTimeout(url, timeoutMs)
+      console.debug('[request] received response status', {
+        url,
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+      })
 
       if (!response.ok) {
         throw new HttpStatusError(response.status, response.statusText)
       }
 
       try {
-        return await response.json()
-      } catch {
+        const rawResponseBody = await response.text()
+        console.debug('[request] raw response body', { url, body: rawResponseBody })
+        const parsedResponse = JSON.parse(rawResponseBody)
+        console.debug('[request] parsed response body', { url, parsed: parsedResponse })
+        return parsedResponse
+      } catch (error) {
+        console.error('[request] failed to parse response JSON', {
+          url,
+          error,
+          stack: error instanceof Error ? error.stack : undefined,
+        })
         throw new Error('Invalid response format: expected JSON.')
       }
     } catch (error) {
+      console.error('[request] request failed', {
+        url,
+        error,
+        stack: error instanceof Error ? error.stack : undefined,
+      })
       if (!shouldRetry(error) || retryAttempt >= MAX_RETRY_ATTEMPTS) {
         throw normalizeRequestError(error)
       }

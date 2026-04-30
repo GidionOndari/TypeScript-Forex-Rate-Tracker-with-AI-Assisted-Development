@@ -37,7 +37,7 @@ export function renderLoadingSkeleton(rowCount = 7): void {
   container.appendChild(skeletonWrapper)
 }
 
-export function renderError(message: string, onRetry: () => void): void {
+export function renderError(errorMessage: string | null | undefined, onRetryClick: () => void): void {
   const container = document.getElementById('rates-container')
 
   if (!container) {
@@ -56,12 +56,18 @@ export function renderError(message: string, onRetry: () => void): void {
   wrapper.style.textAlign = 'center'
 
   const errorText = document.createElement('p')
-  errorText.textContent = message
+  const safeErrorMessage =
+    typeof errorMessage === 'string' && errorMessage.trim().length > 0
+      ? errorMessage
+      : 'Unable to fetch exchange rates. Please try again.'
+  errorText.textContent = safeErrorMessage
 
   const retryButton = document.createElement('button')
   retryButton.type = 'button'
   retryButton.textContent = 'Retry'
-  retryButton.addEventListener('click', onRetry)
+  retryButton.addEventListener('click', () => {
+    onRetryClick()
+  })
 
   wrapper.appendChild(errorText)
   wrapper.appendChild(retryButton)
