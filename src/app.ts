@@ -47,7 +47,7 @@ function renderFromState(container: HTMLElement, onRetry: () => void): void {
     return
   }
 
-  if (appState.error !== null) {
+  if (appState.error != null) {
     if (appState.lastSuccessfulRates) {
       container.innerHTML = ''
       renderRates(appState.lastSuccessfulRates, appState.previousRates)
@@ -62,9 +62,7 @@ function renderFromState(container: HTMLElement, onRetry: () => void): void {
       const retryButton = document.createElement('button')
       retryButton.type = 'button'
       retryButton.textContent = 'Retry'
-      retryButton.addEventListener('click', () => {
-        onRetry()
-      })
+      retryButton.addEventListener('click', onRetry)
       container.appendChild(retryButton)
 
       updateRefreshIndicator('Showing stale data')
@@ -105,10 +103,11 @@ export async function renderApp(): Promise<void> {
 
   let requestToken = 0
   const retryLoadRates = (): void => {
+    const currentBaseCurrency = appState.baseCurrency
     setError(null)
     setLoading(true)
     renderFromState(ratesContainer, retryLoadRates)
-    void loadRates(appState.baseCurrency)
+    void loadRates(currentBaseCurrency)
   }
 
   const loadRates = async (baseCurrency: string): Promise<void> => {
@@ -138,7 +137,7 @@ export async function renderApp(): Promise<void> {
         return
       }
 
-      const message = error instanceof Error ? error.message : 'Failed to load exchange rates.'
+      const message = error instanceof Error ? error.message : normalizeUnknownErrorMessage(error)
       setError(message)
       setLoading(false)
       renderFromState(ratesContainer, retryLoadRates)
@@ -157,4 +156,29 @@ export async function renderApp(): Promise<void> {
   controlsContainer.appendChild(selector)
 
   await loadRates(DEFAULT_BASE_CURRENCY)
+}
+
+function normalizeUnknownErrorMessage(error: unknown): string {
+  if (typeof error === 'string' && error.trim().length > 0) {
+    return error
+  }
+
+  if (error && typeof error === 'object') {
+    const candidate = error as { message?: unknown }
+
+    if (typeof candidate.message === 'string' && candidate.message.trim().length > 0) {
+      return candidate.message
+    }
+
+    try {
+      const serializedError = JSON.stringify(error)
+      if (serializedError && serializedError !== '{}') {
+        return serializedError
+      }
+    } catch {
+      return 'Failed to load exchange rates.'
+    }
+  }
+
+  return 'Failed to load exchange rates.'
 }

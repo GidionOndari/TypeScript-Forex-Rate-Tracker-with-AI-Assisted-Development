@@ -56,18 +56,12 @@ export function renderError(errorMessage: string | null | undefined, onRetryClic
   wrapper.style.textAlign = 'center'
 
   const errorText = document.createElement('p')
-  const safeErrorMessage =
-    typeof errorMessage === 'string' && errorMessage.trim().length > 0
-      ? errorMessage
-      : 'Unable to fetch exchange rates. Please try again.'
-  errorText.textContent = safeErrorMessage
+  errorText.textContent = errorMessage ?? 'Unable to fetch exchange rates. Please try again.'
 
   const retryButton = document.createElement('button')
   retryButton.type = 'button'
   retryButton.textContent = 'Retry'
-  retryButton.addEventListener('click', () => {
-    onRetryClick()
-  })
+  retryButton.addEventListener('click', onRetryClick)
 
   wrapper.appendChild(errorText)
   wrapper.appendChild(retryButton)
