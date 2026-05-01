@@ -132,20 +132,7 @@ Flow summary: **UI → service → API → normalization → render**.
 - On failure, the UI shows a styled error panel with a retry action.
 - If previous successful data exists, stale data can still be shown to avoid a blank screen.
 
-## 10) Screenshots (Placeholders)
-> Replace these with real images from your running app.
-
-- `docs/screenshots/dashboard-overview.png` — full dashboard
-- `docs/screenshots/rates-table-filter-sort.png` — table controls in action
-- `docs/screenshots/loading-state.png` — skeleton loading state
-- `docs/screenshots/error-state.png` — retryable error panel
-
-Markdown example:
-```md
-![Dashboard Overview](docs/screenshots/dashboard-overview.png)
-```
-
-## 11) Future Improvements
+## 10) Future Improvements
 - Richer charts and comparative visualizations
 - Historical rates exploration (date-range and trend views)
 - Historical trend charts (multi-day/time-series)
@@ -155,7 +142,7 @@ Markdown example:
 - Better accessibility audits (keyboard focus paths + ARIA enhancements)
 - Optional framework migration for larger component ecosystems
 
-## 12) License
+## 11) License
 This project is currently **unlicensed**.
 
 If you plan to distribute or open-source it, add a standard license file (for example MIT, Apache-2.0, or GPL-3.0).
