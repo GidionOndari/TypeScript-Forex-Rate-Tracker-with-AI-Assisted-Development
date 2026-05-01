@@ -1,167 +1,161 @@
-# Forex Dashboard (TypeScript + Vite)
+# Forex Rate Tracker Dashboard
 
-## Description
-This project is a lightweight Forex dashboard built with **TypeScript** and **Vite**. It fetches live exchange rates from the ExchangeRate.host API and displays them in a clean dashboard UI with trend indicators and robust loading/error handling.
+## 1) Project Title
+**Forex Rate Tracker Dashboard**
 
-### What the app does
-- Retrieves latest exchange rates based on a selected base currency.
-- Displays rates in a readable, aligned format.
-- Shows trend direction (up/down/stable/new) between current and previous snapshots.
-- Handles loading and failure states with dedicated UI rendering.
+## 2) Description
+A production-style Forex dashboard built with TypeScript and Vite. The app fetches latest exchange rates from the Frankfurter API, normalizes responses, and renders a responsive UI with trend indicators, filtering/sorting, and clear loading/error/success states.
 
-### What it demonstrates
-- Type-safe frontend development with TypeScript.
-- API integration with runtime response validation.
-- Stateful UI updates with snapshot-based state management.
-- Vanilla DOM rendering patterns without a framework.
+## 3) Features
+- Real-time exchange rate retrieval from Frankfurter
+- Base currency selection (`USD`, `EUR`, `GBP`, `JPY`, `KES`)
+- Latest exchange rates retrieval from Frankfurter
+- API integration through a dedicated service layer (`getLatestRates`)
+- Snapshot-based trend detection (`up`, `down`, `stable`, `new`)
+- Rates table with search and sort controls
+- Top-10 strongest currencies bar visualization
+- Skeleton loading state, retryable error state, and status badges
+- Graceful error handling with retry flow and stale-data fallback
+- Responsive layout with light/dark theme support
+- Resilient HTTP layer with timeout and bounded retry/backoff
 
-## Features
-- Live exchange rates from ExchangeRate.host
-- Base currency selector (USD, EUR, GBP, JPY, KES)
-- Trend indicators (`↑`, `↓`, `→`, `✳`)
-- Loading skeleton UI
-- User-friendly error UI with retry placeholder button
-
-## Tech Stack
+## 4) Tech Stack
 - **TypeScript**
 - **Vite**
-- **ExchangeRate.host API**
-- **Vanilla DOM rendering**
+- **Fetch API**
+- **CSS** (custom properties + responsive layout)
+- **Vanilla DOM APIs** (no framework)
+- **Frankfurter API** (`https://api.frankfurter.app`)
+- **CSS variables** for theming and design system consistency
 
-## Installation & Run
-```bash
-npm install
-npm run dev
-```
-
-Then open the local Vite URL shown in terminal (typically `http://localhost:5173`).
-
-## Project Structure
+## 5) Architecture Overview
 ```text
-.
-├── index.html
-├── package.json
-├── tsconfig.json
-├── tsconfig.node.json
-├── vite.config.ts
-└── src
-    ├── api
-    │   ├── exchangeRateService.ts
-    │   └── index.ts
-    ├── app.ts
-    ├── components
-    │   ├── currencySelector.ts
-    │   ├── index.ts
-    │   └── ratesDisplay.ts
-    ├── main.ts
-    ├── state
-    │   └── appState.ts
-    ├── styles
-    │   ├── index.css
-    │   └── main.css
-    ├── types
-    │   ├── exchangeRates.ts
-    │   └── index.ts
-    └── utils
-        ├── httpClient.ts
-        ├── index.ts
-        └── trends.ts
+src/
+├─ api/
+│  └─ exchangeRateService.ts     # API orchestration + response normalization
+├─ components/
+│  ├─ currencySelector.ts        # Base-currency control
+│  └─ ratesDisplay.ts            # Rates table, states, filtering/sorting, chart
+├─ state/
+│  └─ appState.ts                # Central app snapshot state
+├─ types/
+│  └─ exchangeRates.ts           # Runtime-safe value conversion/types
+├─ utils/
+│  ├─ httpClient.ts              # Fetch timeout, retry, error normalization
+│  └─ trends.ts                  # Trend derivation between snapshots
+├─ styles/
+│  └─ main.css                   # Design tokens + responsive dashboard styling
+└─ app.ts                        # App composition + state-driven rendering flow
 ```
 
-## Learning Outcomes
-Working through this project helps reinforce:
-- **API integration**: fetching and validating remote JSON responses.
-- **State management**: handling current/previous snapshots and UI state transitions.
-- **DOM rendering**: building reusable rendering utilities using vanilla DOM APIs.
-- **TypeScript typing**: modeling API contracts and safer function boundaries.
+### Project structure notes
+- **`src/api`**: service entry points that encapsulate external API communication.
+- **`src/config`**: environment-driven configuration (`VITE_API_BASE_URL`) and base URL normalization.
+- **`src/utils`**: transport reliability and shared pure utilities (retry/timeout/trend calculation).
+- **`src/types`**: domain types and runtime-safe rate conversions used during normalization.
 
-## Future Improvements
-- Add chart visualizations for historical and comparative trends.
-- Introduce caching (in-memory or localStorage) to reduce repeated API calls.
-- Migrate UI layer to a component framework (e.g., React/Vue/Svelte) for larger-scale maintainability.
+## 6) Setup Instructions (Step-by-Step)
+1. **Clone the repository**
+   ```bash
+   git clone <your-repo-url>
+   cd TypeScript-Forex-Rate-Tracker-with-AI-Assisted-Development
+   ```
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+3. **Create environment file (optional override)**
+   ```bash
+   cp .env.example .env
+   ```
+   If `.env.example` is not present, create `.env` manually (see section 7).
+4. **Run in development**
+   ```bash
+   npm run dev
+   ```
+5. **Build for production**
+   ```bash
+   npm run build
+   ```
+6. **Preview production build**
+   ```bash
+   npm run preview
+   ```
 
-## AI Prompt Journal
+## 7) Environment Variables
+The app supports a configurable API base URL:
 
-### 1) Purpose of Using AI in This Project
-AI was used as a development accelerator to quickly scaffold, iterate, and refactor a TypeScript Forex dashboard while maintaining a clean architecture.
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `VITE_API_BASE_URL` | No | `https://api.frankfurter.app` | Base URL for latest rates API calls |
 
-Primary goals for using AI:
-- Speed up repetitive setup and boilerplate tasks.
-- Generate modular first-pass implementations for API, state, and UI layers.
-- Support rapid iteration on UX states (loading, error, success).
-- Improve documentation quality and consistency.
+Example `.env`:
+```bash
+VITE_API_BASE_URL=https://api.frankfurter.app
+```
 
-### 2) Key Prompts Used (Summarized)
-- "Initialize a Vite + TypeScript project in the current repository."
-- "Create strict TypeScript interfaces for ExchangeRate.host latest response."
-- "Build a reusable API service using fetch with robust error handling."
-- "Create UI modules for selector, rates display, loading skeleton, and error states."
-- "Add state management with snapshot updates and trend calculation."
-- "Refactor app to wire selector changes to live API updates safely."
-- "Polish layout and responsive styling without external CSS frameworks."
-- "Create a testing checklist and professional README documentation."
+## 8) API Used (Frankfurter)
+- **Provider:** Frankfurter
+- **Docs:** https://www.frankfurter.app/docs/
+- **Endpoint used:** `GET /latest?from={BASE}`
+- **Example:** `https://api.frankfurter.app/latest?from=USD`
 
-### 3) Prompting Phases and Outcomes
+The app validates and normalizes API data before rendering to protect UI logic from malformed payloads.
 
-#### Phase 0: Setup
-**Prompt focus:** project initialization, folder structure, TypeScript/Vite baseline.
+### API Integration
+- The dashboard integrates with **Frankfurter API** for latest exchange rates.
+- Endpoint pattern: **`/latest?from=BASE`**.
+- **No API key is required**, which keeps frontend setup simple.
+- Frankfurter was selected for this project because it is stable, free to use, and does not require auth for core latest-rate use cases.
 
-**Achieved:**
-- Root project scaffold with entry files and TypeScript configuration.
-- Organized `src/` modules for API, components, state, types, styles, and utils.
+## 9) How It Works (Data Flow)
+1. App mounts and renders dashboard layout.
+2. User selects a base currency (default `USD`).
+3. `getLatestRates(base)` calls the configured Frankfurter endpoint.
+4. `request()` applies timeout/retry behavior and parses JSON.
+5. Rates are normalized into a strict numeric `Record<string, number>`.
+6. State snapshot updates:
+   - `previousRates` ← old `currentRates`
+   - `currentRates` ← latest normalized rates
+7. UI renders:
+   - loading skeleton during requests
+   - error panel + retry on failures
+   - rates table with filter/sort controls
+   - top-10 strongest currencies visualization
+   - status badge updates (`loading`, `success`, `error`, `neutral`)
 
-#### Phase 1: API Design
-**Prompt focus:** API service architecture and typed responses.
+Flow summary: **UI → service → API → normalization → render**.
 
-**Achieved:**
-- `getLatestRates(baseCurrency)` service function.
-- Centralized HTTP utility wrapper.
-- Runtime validation and meaningful error propagation.
+## Error Handling
+- Request failures are captured in the HTTP utility and normalized into consistent error messages.
+- Timeouts and transient failures are retried with bounded exponential backoff.
+- On failure, the UI shows a styled error panel with a retry action.
+- If previous successful data exists, stale data can still be shown to avoid a blank screen.
 
-#### Phase 2: UI Integration
-**Prompt focus:** mount flow, dashboard layout, and rendering primitives.
+## 10) Screenshots (Placeholders)
+> Replace these with real images from your running app.
 
-**Achieved:**
-- App shell with header, controls, and rates section.
-- Currency selector integration with no page reload.
-- Loading skeleton and error view rendering.
+- `docs/screenshots/dashboard-overview.png` — full dashboard
+- `docs/screenshots/rates-table-filter-sort.png` — table controls in action
+- `docs/screenshots/loading-state.png` — skeleton loading state
+- `docs/screenshots/error-state.png` — retryable error panel
 
-#### Phase 3: State + Trends
-**Prompt focus:** state correctness and trend analysis.
+Markdown example:
+```md
+![Dashboard Overview](docs/screenshots/dashboard-overview.png)
+```
 
-**Achieved:**
-- Snapshot-aware state updates (`currentRates` to `previousRates`).
-- Trend calculator for up/down/stable/new states.
-- Safer update sequencing for async fetch responses.
+## 11) Future Improvements
+- Richer charts and comparative visualizations
+- Historical rates exploration (date-range and trend views)
+- Historical trend charts (multi-day/time-series)
+- Currency favorites and pinning
+- Local caching to reduce repeated requests
+- UI theming presets (for example compact/high-contrast variants)
+- Better accessibility audits (keyboard focus paths + ARIA enhancements)
+- Optional framework migration for larger component ecosystems
 
-#### Phase 4: UI Refinement
-**Prompt focus:** readability, responsiveness, and polished UX.
+## 12) License
+This project is currently **unlicensed**.
 
-**Achieved:**
-- Improved visual hierarchy and spacing.
-- Aligned rate rows with trend indicators.
-- Responsive CSS adjustments for smaller screens.
-
-#### Phase 5: Testing + Docs
-**Prompt focus:** quality checks and project communication.
-
-**Achieved:**
-- Structured manual testing checklist across API/state/UI/edge cases.
-- Professional README with setup, architecture, and roadmap details.
-
-### 4) Reflection
-
-#### How AI Improved Development Speed
-- Reduced scaffolding time and sped up iterative refactors.
-- Helped maintain momentum across many small, incremental improvements.
-- Produced consistent first-draft implementations and docs quickly.
-
-#### What Still Required Human Debugging
-- Validating environment limitations (e.g., package registry constraints).
-- Verifying runtime behavior and state transitions in real UI flows.
-- Reviewing edge cases and refining error semantics for production quality.
-
-#### What Was Learned About Structuring Prompts
-- Narrow, single-purpose prompts produce cleaner, easier-to-review changes.
-- Defining explicit constraints ("no new features", "no frameworks") improves output precision.
-- Phased prompting (setup → API → UI → state → polish → docs) yields better architecture than one large prompt.
+If you plan to distribute or open-source it, add a standard license file (for example MIT, Apache-2.0, or GPL-3.0).

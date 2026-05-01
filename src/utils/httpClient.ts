@@ -1,4 +1,10 @@
 /**
+ * HTTP transport utility module.
+ *
+ * Purpose: centralize outbound request behavior (timeout, retry policy,
+ * JSON parsing, and error normalization) for all service-layer API calls.
+ */
+/**
  * Minimal HTTP utility for JSON GET requests.
  * Returns parsed data or throws a meaningful error.
  */
@@ -7,6 +13,7 @@ const MAX_RETRY_ATTEMPTS = 2
 const INITIAL_BACKOFF_MS = 500
 
 export class RequestTimeoutError extends Error {
+  /** Error used to distinguish timeout failures from other network failures. */
   constructor(message = 'Request timed out') {
     super(message)
     this.name = 'RequestTimeoutError'
@@ -23,19 +30,24 @@ class HttpStatusError extends Error {
   }
 }
 
+/**
+ * Performs a resilient JSON GET request.
+ *
+ * Why retries: short-lived network failures and 5xx responses are often transient.
+ * Retries are bounded and exponential to avoid hammering the API.
+ *
+ * @param url - Absolute endpoint URL to fetch.
+ * @param timeoutMs - Timeout budget in milliseconds per attempt.
+ * @returns Parsed JSON payload.
+ * @throws {RequestTimeoutError} When a request attempt exceeds `timeoutMs` and retries are exhausted.
+ * @throws {Error} For normalized network failures, non-2xx HTTP statuses after retry budget, or invalid JSON.
+ */
 export async function request(url: string, timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS): Promise<any> {
   let retryAttempt = 0
 
   while (true) {
     try {
-      console.debug('[request] sending request', { url, timeoutMs, retryAttempt })
       const response = await fetchWithTimeout(url, timeoutMs)
-      console.debug('[request] received response status', {
-        url,
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-      })
 
       if (!response.ok) {
         throw new HttpStatusError(response.status, response.statusText)
@@ -43,38 +55,19 @@ export async function request(url: string, timeoutMs = DEFAULT_REQUEST_TIMEOUT_M
 
       try {
         const rawResponseBody = await response.text()
-        console.debug('[request] raw response body', { url, body: rawResponseBody })
         const parsedResponse = JSON.parse(rawResponseBody)
-        console.debug('[request] parsed response body', { url, parsed: parsedResponse })
         return parsedResponse
       } catch (error) {
-        console.error('[request] failed to parse response JSON', {
-          url,
-          error,
-          stack: error instanceof Error ? error.stack : undefined,
-        })
         throw new Error('Invalid response format: expected JSON.')
       }
     } catch (error) {
-      console.error('[request] request failed', {
-        url,
-        error,
-        stack: error instanceof Error ? error.stack : undefined,
-      })
       if (!shouldRetry(error) || retryAttempt >= MAX_RETRY_ATTEMPTS) {
         throw normalizeRequestError(error)
       }
 
       retryAttempt += 1
+      // Exponential backoff reduces pressure during transient upstream instability.
       const backoffMs = INITIAL_BACKOFF_MS * 2 ** (retryAttempt - 1)
-
-      console.warn('[request] transient failure, retrying request', {
-        attempt: retryAttempt,
-        maxAttempts: MAX_RETRY_ATTEMPTS,
-        backoffMs,
-        url,
-        reason: toErrorMessage(error),
-      })
 
       await delay(backoffMs)
     }
@@ -82,7 +75,6 @@ export async function request(url: string, timeoutMs = DEFAULT_REQUEST_TIMEOUT_M
 }
 
 async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
-  console.debug('[fetchWithTimeout] request URL', { url, timeoutMs })
   const controller = new AbortController()
   const timeoutId = setTimeout(() => {
     controller.abort()
@@ -90,19 +82,8 @@ async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Respons
 
   try {
     const response = await fetch(url, { signal: controller.signal })
-    console.debug('[fetchWithTimeout] response status', {
-      url,
-      status: response.status,
-      statusText: response.statusText,
-      ok: response.ok,
-    })
     return response
   } catch (error) {
-    console.error('[fetchWithTimeout] request error', {
-      url,
-      error,
-      stack: error instanceof Error ? error.stack : undefined,
-    })
     if (
       (error instanceof DOMException && error.name === 'AbortError') ||
       (error instanceof Error && error.name === 'AbortError')
@@ -116,6 +97,11 @@ async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Respons
   }
 }
 
+/**
+ * Retries only transient failures:
+ * - browser/network TypeError
+ * - upstream 5xx HTTP status
+ */
 function shouldRetry(error: unknown): boolean {
   if (error instanceof TypeError) {
     return true
@@ -128,6 +114,7 @@ function shouldRetry(error: unknown): boolean {
   return false
 }
 
+/** Maps low-level failures to stable, user-facing error messages. */
 function normalizeRequestError(error: unknown): Error {
   if (error instanceof RequestTimeoutError) {
     return error
@@ -144,10 +131,10 @@ function normalizeRequestError(error: unknown): Error {
   return error instanceof Error ? error : new Error('Unknown request failure.')
 }
 
-function toErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Unknown request failure.'
-}
-
+/**
+ * Async backoff helper.
+ * Extracted for readability and to keep retry loop intention explicit.
+ */
 async function delay(milliseconds: number): Promise<void> {
   await new Promise((resolve) => {
     setTimeout(resolve, milliseconds)
