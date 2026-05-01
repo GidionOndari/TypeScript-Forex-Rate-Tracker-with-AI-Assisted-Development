@@ -1,5 +1,10 @@
 const SUPPORTED_CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'KES'] as const
 
+/**
+ * Creates the base-currency selector and reports value changes to the caller.
+ * Keeping this isolated lets the app swap supported currencies without touching
+ * request orchestration logic.
+ */
 export function createCurrencySelector(onChange: (currency: string) => void): HTMLSelectElement {
   const select = document.createElement('select')
   select.name = 'base-currency'

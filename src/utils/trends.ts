@@ -1,5 +1,12 @@
 export type TrendDirection = 'up' | 'down' | 'stable' | 'new'
 
+/**
+ * Compares current and previous rate snapshots per currency.
+ *
+ * Edge cases:
+ * - Missing/invalid prior values are marked as `new` to avoid false movement.
+ * - Non-finite current values are treated as `new` so UI can degrade gracefully.
+ */
 export function calculateTrend(
   current: Record<string, number>,
   previous: Record<string, number> | null,

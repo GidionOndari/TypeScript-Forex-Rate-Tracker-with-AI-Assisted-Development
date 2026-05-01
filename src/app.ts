@@ -6,17 +6,19 @@ const DEFAULT_BASE_CURRENCY = 'USD'
 
 function renderLayout(): string {
   return `
-    <header id="dashboard-header">
-      <h1>Forex Dashboard</h1>
-      <p id="base-currency-display">Base Currency: ${appState.baseCurrency}</p>
+    <header id="dashboard-header" class="card">
+      <div>
+        <h1>Forex Dashboard</h1>
+        <p id="base-currency-display">Base Currency: ${appState.baseCurrency}</p>
+      </div>
     </header>
     <main id="dashboard-main">
-      <section id="controls-section">
+      <section id="controls-section" class="card">
         <h2>Controls</h2>
         <div id="controls-container"></div>
         <p id="refresh-indicator">Idle</p>
       </section>
-      <section id="rates-section">
+      <section id="rates-section" class="card">
         <h2>Rates</h2>
         <div id="rates-container"></div>
       </section>
@@ -24,6 +26,7 @@ function renderLayout(): string {
   `
 }
 
+/** Keeps header base currency in sync with latest successful API response. */
 function updateBaseCurrencyDisplay(): void {
   const baseCurrencyDisplay = document.getElementById('base-currency-display')
 
@@ -32,14 +35,40 @@ function updateBaseCurrencyDisplay(): void {
   }
 }
 
+/**
+ * Converts refresh lifecycle text into semantic badge states.
+ * This keeps UX feedback centralized and avoids repeating class logic.
+ */
 function updateRefreshIndicator(text: string): void {
   const refreshIndicator = document.getElementById('refresh-indicator')
 
   if (refreshIndicator) {
     refreshIndicator.textContent = text
+    refreshIndicator.className = 'status-badge'
+
+    if (text.includes('failed')) {
+      refreshIndicator.classList.add('badge-error')
+      return
+    }
+
+    if (text.includes('Refreshing')) {
+      refreshIndicator.classList.add('badge-loading')
+      return
+    }
+
+    if (text.includes('updated')) {
+      refreshIndicator.classList.add('badge-success')
+      return
+    }
+
+    refreshIndicator.classList.add('badge-neutral')
   }
 }
 
+/**
+ * Renders rates panel from current state snapshot.
+ * Handles loading, error with stale fallback, and success paths in one place.
+ */
 function renderFromState(container: HTMLElement, onRetry: () => void): void {
   if (appState.loading) {
     renderLoadingSkeleton()
@@ -54,14 +83,13 @@ function renderFromState(container: HTMLElement, onRetry: () => void): void {
 
       const staleNotice = document.createElement('p')
       staleNotice.textContent = `Showing stale data. Latest update failed: ${appState.error ?? 'Unable to fetch exchange rates. Please try again.'}`
-      staleNotice.style.marginTop = '12px'
-      staleNotice.style.color = '#92400e'
-      staleNotice.style.fontSize = '0.9rem'
+      staleNotice.className = 'status-message status-warning'
       container.appendChild(staleNotice)
 
       const retryButton = document.createElement('button')
       retryButton.type = 'button'
       retryButton.textContent = 'Retry'
+      retryButton.className = 'btn'
       retryButton.addEventListener('click', onRetry)
       container.appendChild(retryButton)
 
@@ -153,7 +181,12 @@ export async function renderApp(): Promise<void> {
   })
 
   selector.value = DEFAULT_BASE_CURRENCY
-  controlsContainer.appendChild(selector)
+  const selectorLabel = document.createElement('label')
+  selectorLabel.htmlFor = 'base-currency'
+  selectorLabel.textContent = 'Base currency'
+  selectorLabel.className = 'control-label'
+
+  controlsContainer.append(selectorLabel, selector)
 
   await loadRates(DEFAULT_BASE_CURRENCY)
 }

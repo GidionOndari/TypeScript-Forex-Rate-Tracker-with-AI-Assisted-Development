@@ -1,10 +1,30 @@
+/**
+ * Exchange-rate service module.
+ *
+ * Purpose: provide app-facing Forex API operations and normalize third-party
+ * payloads into stable domain shapes consumed by UI/state layers.
+ */
 import { appConfig } from '../config'
 import { toExchangeRateNumber, type ExchangeRatesResponse } from '../types'
 import { request } from '../utils'
-
-
 /**
- * Fetch latest FX rates (Frankfurter API)
+ * Fetches latest exchange rates for the provided base currency.
+ *
+ * Flow:
+ * 1) Sanitize the caller-provided base code.
+ * 2) Request `/latest` from the configured API origin.
+ * 3) Keep only numerically valid rates to protect downstream UI calculations.
+ *
+ * Edge cases:
+ * - Empty/whitespace base code throws early.
+ * - Missing `rates` payload is treated as a protocol error.
+ * - Invalid numeric fields are skipped instead of crashing the render path.
+ *
+ * @param baseCurrency - ISO 4217 code (for example `USD`).
+ * @returns Normalized response containing base, date, and validated numeric rates.
+ * @throws {Error} When base currency is empty.
+ * @throws {Error} When API payload is missing a `rates` object.
+ * @throws {Error} When the underlying request utility fails (network/timeout/HTTP errors).
  */
 export async function getLatestRates(baseCurrency: string): Promise<ExchangeRatesResponse> {
   const base = baseCurrency.trim().toUpperCase()
