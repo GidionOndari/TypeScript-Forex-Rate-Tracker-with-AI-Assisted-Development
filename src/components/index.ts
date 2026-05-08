@@ -1,2 +1,2 @@
 export { createCurrencySelector } from './currencySelector'
-export { renderError, renderLoadingSkeleton, renderRates, renderVerificationState } from './ratesDisplay'
+export { renderError, renderLoadingSkeleton, renderRates } from './ratesDisplay'
