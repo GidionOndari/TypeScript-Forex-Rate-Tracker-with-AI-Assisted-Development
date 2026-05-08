@@ -157,6 +157,39 @@ export function renderError(errorMessage: string | null | undefined, onRetryClic
   container.appendChild(wrapper)
 }
 
+export function renderVerificationState(
+  state: 'unverified' | 'unavailable',
+  reason: string,
+  onRetryClick: () => void,
+): void {
+  const container = document.getElementById('rates-container')
+  if (!container) {
+    throw new Error('Rates container was not found.')
+  }
+
+  container.innerHTML = ''
+
+  const wrapper = document.createElement('div')
+  wrapper.className = 'status-panel fade-in'
+
+  const message = document.createElement('p')
+  message.className = 'status-message'
+  message.textContent = reason
+
+  if (state === 'unavailable') {
+    const retryButton = document.createElement('button')
+    retryButton.type = 'button'
+    retryButton.textContent = 'Retry'
+    retryButton.className = 'btn'
+    retryButton.addEventListener('click', onRetryClick)
+    wrapper.append(message, retryButton)
+  } else {
+    wrapper.appendChild(message)
+  }
+
+  container.appendChild(wrapper)
+}
+
 /**
  * Renders filter/sort controls, tabular rates, and a strength chart.
  *

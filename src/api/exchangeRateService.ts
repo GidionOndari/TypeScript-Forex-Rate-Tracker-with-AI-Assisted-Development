@@ -53,7 +53,7 @@ export async function getLatestRates(baseCurrency: string): Promise<ExchangeRate
 
   return {
     base: data.base || base,
-    date: data.date || new Date().toISOString().slice(0, 10),
+    date: typeof data.date === 'string' ? data.date : '',
     rates,
   }
 }
