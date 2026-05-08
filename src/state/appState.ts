@@ -5,7 +5,6 @@ export interface AppState {
   loading: boolean
   error: string | null
   lastSuccessfulRates: Record<string, number> | null
-  lastVerifiedDate: string | null
 }
 
 export const appState: AppState = {
@@ -15,22 +14,20 @@ export const appState: AppState = {
   loading: false,
   error: null,
   lastSuccessfulRates: null,
-  lastVerifiedDate: null,
 }
 
 export function setBaseCurrency(currency: string): void {
   appState.baseCurrency = currency
 }
 
-export function updateRatesWithSnapshot(newRates: Record<string, number>, verifiedDate: string): void {
+export function updateRatesWithSnapshot(newRates: Record<string, number>): void {
   appState.previousRates = appState.currentRates ? { ...appState.currentRates } : null
   appState.currentRates = { ...newRates }
   appState.lastSuccessfulRates = { ...newRates }
-  appState.lastVerifiedDate = verifiedDate
 }
 
 export function setRates(rates: Record<string, number>): void {
-  updateRatesWithSnapshot(rates, appState.lastVerifiedDate ?? "")
+  updateRatesWithSnapshot(rates)
 }
 
 export function setLoading(value: boolean): void {
