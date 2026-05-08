@@ -1,6 +1,10 @@
 import { getLatestRates } from './api'
-import { createCurrencySelector, renderError, renderLoadingSkeleton, renderRates } from './components'
+import { createCurrencySelector, renderLoadingSkeleton, renderRates } from './components'
+import { renderVerificationBoundary } from './components/truth/VerificationBoundary'
+import { useVerifiedFreshness } from './hooks/truth/useVerifiedFreshness'
 import { appState, setBaseCurrency, setError, setLoading, updateRatesWithSnapshot } from './state/appState'
+import { toRatesViewModel } from './adapters/truth/ratesViewModel'
+import { createVerificationScheduler } from './infrastructure/truth/verificationScheduler'
 
 const DEFAULT_BASE_CURRENCY = 'USD'
 
@@ -72,45 +76,45 @@ function updateRefreshIndicator(text: string): void {
 function renderFromState(container: HTMLElement, onRetry: () => void): void {
   if (appState.loading) {
     renderLoadingSkeleton()
-    updateRefreshIndicator('Refreshing rates...')
+    updateRefreshIndicator('Awaiting backend verification')
     return
   }
 
   if (appState.error != null) {
-    if (appState.lastSuccessfulRates) {
-      container.innerHTML = ''
-      renderRates(appState.lastSuccessfulRates, appState.previousRates)
-
-      const staleNotice = document.createElement('p')
-      staleNotice.textContent = `Showing stale data. Latest update failed: ${appState.error ?? 'Unable to fetch exchange rates. Please try again.'}`
-      staleNotice.className = 'status-message status-warning'
-      container.appendChild(staleNotice)
-
-      const retryButton = document.createElement('button')
-      retryButton.type = 'button'
-      retryButton.textContent = 'Retry'
-      retryButton.className = 'btn'
-      retryButton.addEventListener('click', onRetry)
-      container.appendChild(retryButton)
-
-      updateRefreshIndicator('Showing stale data')
-      return
-    }
-
-    renderError(appState.error, onRetry)
-    updateRefreshIndicator('Last update failed')
+renderVerificationBoundary(container, { state: 'unavailable', reason: appState.error }, () => undefined, onRetry)
+    updateRefreshIndicator('Verification unavailable')
     return
   }
 
   if (!appState.currentRates) {
-    container.textContent = 'No rates available.'
-    updateRefreshIndicator('Idle')
+renderVerificationBoundary(container, { state: 'unverified', reason: 'Awaiting backend verification.' }, () => undefined, onRetry)
+    updateRefreshIndicator('Awaiting backend verification')
     return
   }
 
-  container.innerHTML = ''
-  renderRates(appState.currentRates, appState.previousRates)
-  updateRefreshIndicator('Rates updated')
+  const freshness = useVerifiedFreshness({
+    asOf: appState.lastVerifiedDate,
+    verificationStatus: 'verified',
+  })
+
+  const viewModel = toRatesViewModel({
+    base: appState.baseCurrency,
+    date: appState.lastVerifiedDate,
+    rates: appState.currentRates,
+  })
+
+  const effectiveState = freshness.state === 'verified' ? viewModel : freshness
+
+  renderVerificationBoundary(
+    container,
+    effectiveState,
+    (verifiedData) => {
+      renderRates(verifiedData.rates, appState.previousRates)
+    },
+    onRetry,
+  )
+
+  updateRefreshIndicator(effectiveState.state === 'verified' ? 'Verified' : effectiveState.reason)
 }
 
 export async function renderApp(): Promise<void> {
@@ -155,7 +159,7 @@ export async function renderApp(): Promise<void> {
         return
       }
 
-      updateRatesWithSnapshot(response.rates)
+      updateRatesWithSnapshot(response.rates, response.date)
       setBaseCurrency(response.base)
       updateBaseCurrencyDisplay()
       setLoading(false)
@@ -189,6 +193,11 @@ export async function renderApp(): Promise<void> {
   controlsContainer.append(selectorLabel, selector)
 
   await loadRates(DEFAULT_BASE_CURRENCY)
+
+  const scheduler = createVerificationScheduler(() => {
+    void loadRates(appState.baseCurrency)
+  }, 60000)
+  scheduler.start()
 }
 
 function normalizeUnknownErrorMessage(error: unknown): string {
